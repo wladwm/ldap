@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/johnweldon/ldap"
+	"github.com/juju2013/goldap"
 )
 
 var (
