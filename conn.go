@@ -32,14 +32,13 @@ type messagePacket struct {
 type Conn struct {
 	conn          net.Conn
 	isTLS         bool
-	isClosing     bool
 	Debug         debugging
 	chanConfirm   chan bool
 	chanResults   map[uint64]chan *ber.Packet
 	chanMessage   chan *messagePacket
 	chanMessageID chan uint64
 	wgSender      sync.WaitGroup
-	wgClose       sync.WaitGroup
+	chanDone      chan struct{}
 	once          sync.Once
 }
 
@@ -76,19 +75,19 @@ func NewConn(conn net.Conn) *Conn {
 		chanMessageID: make(chan uint64),
 		chanMessage:   make(chan *messagePacket, 10),
 		chanResults:   map[uint64]chan *ber.Packet{},
+		chanDone:      make(chan struct{}),
 	}
 }
 
 func (l *Conn) start() {
 	go l.reader()
 	go l.processMessages()
-	l.wgClose.Add(1)
 }
 
 // Close closes the connection.
 func (l *Conn) Close() {
 	l.once.Do(func() {
-		l.isClosing = true
+		close(l.chanDone)
 		l.wgSender.Wait()
 
 		l.Debug.Printf("Sending quit message and waiting for confirmation")
@@ -100,11 +99,8 @@ func (l *Conn) Close() {
 		if err := l.conn.Close(); err != nil {
 			log.Print(err)
 		}
-
-		l.conn = nil
-		l.wgClose.Done()
 	})
-	l.wgClose.Wait()
+	<-l.chanDone
 }
 
 // Returns the next available messageID
@@ -158,8 +154,17 @@ func (l *Conn) StartTLS(config *tls.Config) error {
 	return nil
 }
 
+func (l *Conn) closing() bool {
+	select {
+	case <-l.chanDone:
+		return true
+	default:
+		return false
+	}
+}
+
 func (l *Conn) sendMessage(packet *ber.Packet) (chan *ber.Packet, error) {
-	if l.isClosing {
+	if l.closing() {
 		return nil, NewError(ErrorNetwork, errors.New("ldap: connection closed"))
 	}
 	out := make(chan *ber.Packet)
@@ -174,7 +179,7 @@ func (l *Conn) sendMessage(packet *ber.Packet) (chan *ber.Packet, error) {
 }
 
 func (l *Conn) finishMessage(messageID uint64) {
-	if l.isClosing {
+	if l.closing() {
 		return
 	}
 	message := &messagePacket{
@@ -185,12 +190,13 @@ func (l *Conn) finishMessage(messageID uint64) {
 }
 
 func (l *Conn) sendProcessMessage(message *messagePacket) bool {
-	if l.isClosing {
+	l.wgSender.Add(1)
+	defer l.wgSender.Done()
+
+	if l.closing() {
 		return false
 	}
-	l.wgSender.Add(1)
 	l.chanMessage <- message
-	l.wgSender.Done()
 	return true
 }
 
