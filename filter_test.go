@@ -45,6 +45,42 @@ func TestFilter(t *testing.T) {
 	}
 }
 
+func TestDecodePresentFilter(t *testing.T) {
+
+	bs := []byte{0x87, 0x06, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72} // ~ (member=*)
+
+	p := ber.DecodePacket(bs)
+	f, err := DecompileFilter(p)
+	if err != nil {
+		t.Errorf("--- CAN'T DECODE & DECOMPILE FILTER")
+		return
+	}
+	if f != "(member=*)" {
+		t.Errorf("expected (member=*), got %s", f)
+	}
+
+}
+
+func TestEncodeDecodePresentFilter(t *testing.T) {
+	f := "(member=*)"
+	p, err := CompileFilter(f)
+	if err != nil {
+		t.Errorf("cant compile filter")
+		return
+	}
+	bytes := p.Bytes()
+
+	p2 := ber.DecodePacket(bytes)
+	f2, err := DecompileFilter(p2)
+	if err != nil {
+		t.Errorf("cant decompile filter")
+		return
+	}
+	if f != f2 {
+		t.Errorf("encode/decode changed filter")
+	}
+}
+
 func BenchmarkFilterCompile(b *testing.B) {
 	b.StopTimer()
 	filters := make([]string, len(testFilters))
