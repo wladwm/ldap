@@ -124,7 +124,7 @@ func DecompileFilter(packet *ber.Packet) (ret string, err error) {
 		ret += "<="
 		ret += ber.DecodeString(packet.Children[1].Data.Bytes())
 	case FilterPresent:
-		ret += ber.DecodeString(packet.Children[0].Data.Bytes())
+		ret += string(packet.Data.Bytes())
 		ret += "=*"
 	case FilterApproxMatch:
 		ret += ber.DecodeString(packet.Children[0].Data.Bytes())
@@ -213,13 +213,15 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 			err = NewError(ErrorFilterCompile, errors.New("ldap: error parsing filter"))
 			return packet, newPos, err
 		}
-		packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 		switch {
 		case packet.Tag == FilterEqualityMatch && condition == "*":
+			packet.TagType = ber.TypePrimitive
 			packet.Tag = FilterPresent
 			packet.Description = FilterMap[uint64(packet.Tag)]
+			packet.Data.WriteString(attribute)
 		case packet.Tag == FilterEqualityMatch && condition[0] == '*' && condition[len(condition)-1] == '*':
 			// Any
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]
 			seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
@@ -227,6 +229,7 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 			packet.AppendChild(seq)
 		case packet.Tag == FilterEqualityMatch && condition[0] == '*':
 			// Final
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]
 			seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
@@ -234,12 +237,14 @@ func compileFilter(filter string, pos int) (*ber.Packet, int, error) {
 			packet.AppendChild(seq)
 		case packet.Tag == FilterEqualityMatch && condition[len(condition)-1] == '*':
 			// Initial
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 			packet.Tag = FilterSubstrings
 			packet.Description = FilterMap[uint64(packet.Tag)]
 			seq := ber.Encode(ber.ClassUniversal, ber.TypeConstructed, ber.TagSequence, nil, "Substrings")
 			seq.AppendChild(ber.NewString(ber.ClassContext, ber.TypePrimitive, FilterSubstringsInitial, condition[:len(condition)-1], "Initial Substring"))
 			packet.AppendChild(seq)
 		default:
+			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, attribute, "Attribute"))
 			packet.AppendChild(ber.NewString(ber.ClassUniversal, ber.TypePrimitive, ber.TagOctetString, condition, "Condition"))
 		}
 		newPos++
