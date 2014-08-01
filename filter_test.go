@@ -1,6 +1,7 @@
 package ldap
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/vanackere/asn1-ber"
@@ -45,39 +46,37 @@ func TestFilter(t *testing.T) {
 	}
 }
 
-func TestDecodePresentFilter(t *testing.T) {
-
-	bs := []byte{0x87, 0x06, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72} // ~ (member=*)
-
-	p := ber.DecodePacket(bs)
-	f, err := DecompileFilter(p)
-	if err != nil {
-		t.Errorf("--- CAN'T DECODE & DECOMPILE FILTER")
-		return
-	}
-	if f != "(member=*)" {
-		t.Errorf("expected (member=*), got %s", f)
-	}
-
+type binTestFilter struct {
+	bin []byte
+	str string
 }
 
-func TestEncodeDecodePresentFilter(t *testing.T) {
-	f := "(member=*)"
-	p, err := CompileFilter(f)
-	if err != nil {
-		t.Errorf("cant compile filter")
-		return
-	}
-	bytes := p.Bytes()
+var binTestFilters = []binTestFilter{
+	{bin: []byte{0x87, 0x06, 0x6d, 0x65, 0x6d, 0x62, 0x65, 0x72}, str: "(member=*)"},
+}
 
-	p2 := ber.DecodePacket(bytes)
-	f2, err := DecompileFilter(p2)
-	if err != nil {
-		t.Errorf("cant decompile filter")
-		return
+func TestFiltersDecode(t *testing.T) {
+	for i, test := range binTestFilters {
+		p := ber.DecodePacket(test.bin)
+		if filter, err := DecompileFilter(p); err != nil {
+			t.Errorf("binTestFilters[%d], DecompileFilter returned : %s", i, err)
+		} else if filter != test.str {
+			t.Errorf("binTestFilters[%d], %q expected, got %q", i, test.str, filter)
+		}
 	}
-	if f != f2 {
-		t.Errorf("encode/decode changed filter")
+}
+
+func TestFiltersEncode(t *testing.T) {
+	for i, test := range binTestFilters {
+		p, err := CompileFilter(test.str)
+		if err != nil {
+			t.Errorf("binTestFilters[%d], CompileFilter returned : %s", i, err)
+			continue
+		}
+		b := p.Bytes()
+		if !reflect.DeepEqual(b, test.bin) {
+			t.Errorf("binTestFilters[%d], %q expected for CompileFilter(%q), got %q", i, test.bin, test.str, b)
+		}
 	}
 }
 
