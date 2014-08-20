@@ -54,6 +54,18 @@ func Dial(network, addr string) (*Conn, error) {
 	return conn, nil
 }
 
+// DialTimeout connects to the given address on the given network using net.DialTimeout
+// and then returns a new Conn for the connection. Acts like Dial but takes a timeout.
+func DialTimeout(network, addr string, timeout time.Duration) (*Conn, error) {
+  c, err := net.DialTimeout(network, addr, timeout)
+  if err != nil {
+    return nil, NewError(ErrorNetwork, err)
+  }
+  conn := NewConn(c)
+  conn.start()
+  return conn, nil
+}
+
 // DialTLS connects to the given address on the given network using tls.Dial
 // and then returns a new Conn for the connection.
 func DialTLS(network, addr string, config *tls.Config) (*Conn, error) {
