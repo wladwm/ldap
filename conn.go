@@ -315,21 +315,11 @@ func (l *Conn) Ping() error {
   }
   defer l.finishMessage(messageID)
 
-  packet = <-channel
-  if packet == nil {
-    return NewError(ErrorNetwork, errors.New("ldap: could not retrieve response"))
-  }
-
   if l.Debug {
     if err := addLDAPDescriptions(packet); err != nil {
       return err
     }
     ber.PrintPacket(packet)
-  }
-
-  resultCode, resultDescription := getLDAPResultCode(packet)
-  if resultCode != 0 {
-    return NewError(resultCode, errors.New(resultDescription))
   }
 
   return nil
