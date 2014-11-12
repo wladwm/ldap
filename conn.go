@@ -11,8 +11,7 @@ import (
 	"net"
 	"sync"
   "time"
-
-	"github.com/vanackere/asn1-ber"
+	"github.com/nmcclain/asn1-ber"
 )
 
 const (

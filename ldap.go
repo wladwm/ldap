@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/vanackere/asn1-ber"
+	"github.com/nmcclain/asn1-ber"
 )
 
 // LDAP Application Codes
@@ -148,6 +148,12 @@ var LDAPResultCodeMap = map[uint8]string{
 	LDAPResultAffectsMultipleDSAs:          "Affects Multiple DSAs",
 	LDAPResultOther:                        "Other",
 }
+
+// Other LDAP constants
+const (
+	LDAPBindAuthSimple = 0
+	LDAPBindAuthSASL   = 3
+)
 
 // Adds descriptions to an LDAP Response packet for debugging
 func addLDAPDescriptions(packet *ber.Packet) (err error) {

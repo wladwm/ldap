@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vanackere/ldap"
+	"github.com/nmcclain/ldap"
 )
 
 var (
