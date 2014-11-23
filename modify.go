@@ -42,6 +42,12 @@ const (
 	ReplaceAttribute = 2
 )
 
+var LDAPModifyAttributeMap = map[uint64]string{
+	AddAttribute:     "Add",
+	DeleteAttribute:  "Delete",
+	ReplaceAttribute: "Replace",
+}
+
 type PartialAttribute struct {
 	attrType string
 	attrVals []string

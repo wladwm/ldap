@@ -107,7 +107,7 @@ const (
 	ErrorDebugging       = 203
 )
 
-var LDAPResultCodeMap = map[uint8]string{
+var LDAPResultCodeMap = map[LDAPResultCode]string{
 	LDAPResultSuccess:                      "Success",
 	LDAPResultOperationsError:              "Operations Error",
 	LDAPResultProtocolError:                "Protocol Error",
@@ -154,6 +154,38 @@ const (
 	LDAPBindAuthSimple = 0
 	LDAPBindAuthSASL   = 3
 )
+
+type LDAPResultCode uint8
+
+type Attribute struct {
+	attrType string
+	attrVals []string
+}
+type AddRequest struct {
+	dn         string
+	attributes []Attribute
+}
+type DeleteRequest struct {
+	dn string
+}
+type ModifyDNRequest struct {
+	dn           string
+	newrdn       string
+	deleteoldrdn bool
+	newSuperior  string
+}
+type AttributeValueAssertion struct {
+	attributeDesc  string
+	assertionValue string
+}
+type CompareRequest struct {
+	dn  string
+	ava []AttributeValueAssertion
+}
+type ExtendedRequest struct {
+	requestName  string
+	requestValue string
+}
 
 // Adds descriptions to an LDAP Response packet for debugging
 func addLDAPDescriptions(packet *ber.Packet) (err error) {
@@ -259,7 +291,7 @@ func addRequestDescriptions(packet *ber.Packet) {
 
 func addDefaultLDAPResponseDescriptions(packet *ber.Packet) {
 	resultCode := packet.Children[1].Children[0].Value.(uint64)
-	packet.Children[1].Children[0].Description = "Result Code (" + LDAPResultCodeMap[uint8(resultCode)] + ")"
+	packet.Children[1].Children[0].Description = "Result Code (" + LDAPResultCodeMap[LDAPResultCode(resultCode)] + ")"
 	packet.Children[1].Children[1].Description = "Matched DN"
 	packet.Children[1].Children[2].Description = "Error Message"
 	if len(packet.Children[1].Children) > 3 {
@@ -285,22 +317,22 @@ func DebugBinaryFile(fileName string) error {
 
 type Error struct {
 	Err        error
-	ResultCode uint8
+	ResultCode LDAPResultCode
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("LDAP Result Code %d %q: %s", e.ResultCode, LDAPResultCodeMap[e.ResultCode], e.Err.Error())
 }
 
-func NewError(resultCode uint8, err error) error {
+func NewError(resultCode LDAPResultCode, err error) error {
 	return &Error{ResultCode: resultCode, Err: err}
 }
 
-func getLDAPResultCode(packet *ber.Packet) (code uint8, description string) {
+func getLDAPResultCode(packet *ber.Packet) (code LDAPResultCode, description string) {
 	if len(packet.Children) >= 2 {
 		response := packet.Children[1]
 		if response.ClassType == ber.ClassApplication && response.TagType == ber.TypeConstructed && len(response.Children) == 3 {
-			return uint8(response.Children[0].Value.(uint64)), response.Children[2].Value.(string)
+			return LDAPResultCode(response.Children[0].Value.(uint64)), response.Children[2].Value.(string)
 		}
 	}
 
